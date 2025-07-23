@@ -1,0 +1,5 @@
+.torrent file format
+
+-A .torrent file is one bencoded dictionary
+-open the file as a binary string 
+-parse it using ascii values
