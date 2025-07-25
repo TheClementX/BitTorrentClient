@@ -20,6 +20,12 @@ void Parser::load_file(std::string& path) {
 	}
 }
 
+void Parser::load_string(std::string& to_load) {
+	this->file_path = ""; 
+	this->cur_pos = 0; 
+	this->content = to_load; 
+}
+
 std::shared_ptr<Bencode> Parser::parse_file() {
 	std::shared_ptr<Bencode> result; 
 
