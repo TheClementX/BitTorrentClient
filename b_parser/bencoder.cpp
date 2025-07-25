@@ -151,3 +151,69 @@ void Parser::print_help(std::shared_ptr<Bencode> to_print, int depth) {
 		throw std::runtime_error("invalid Bencode variant passed to print"); 
 	}
 }
+
+std::string Parser::encode(std::shared_ptr<Bencode> to_encode) {
+	if(std::holds_alternative<int64_t>(to_encode->val)) 
+		return this->encode_int(to_encode); 
+	else if(std::holds_alternative<std::string>(to_encode->val)) 
+		return this->encode_string(to_encode); 
+	else if(std::holds_alternative<std::vector<std::shared_ptr<Bencode>>>(to_encode->val)) 
+		return this->encode_list(to_encode); 
+	else if(std::holds_alternative<std::map<std::string, std::shared_ptr<Bencode>>>(to_encode->val)) 
+		return this->encode_dict(to_encode); 
+	else 
+		throw std::runtime_error("invalid object passed to encoder"); 
+}
+
+
+std::string Parser::encode_int(std::shared_ptr<Bencode> to_encode) {
+	std::string result; 
+
+	result.push_back('i'); 
+	std::string i = std::to_string(std::get<int64_t>(to_encode->val)); 
+	result.append(i); 
+	result.push_back('e'); 
+
+	return result; 
+}
+
+std::string Parser::encode_string(std::shared_ptr<Bencode> to_encode) {
+	std::string result; 
+
+	std::string s = std::get<std::string>(to_encode->val); 
+	std::string len = std::to_string(s.size()); 
+	result.append(len); 
+	result.push_back(':'); 
+	result.append(s); 
+
+	return result;
+}
+
+std::string Parser::encode_list(std::shared_ptr<Bencode> to_encode) {
+	std::string result; 
+
+	std::vector<std::shared_ptr<Bencode>> v = std::get<std::vector<std::shared_ptr<Bencode>>>(to_encode->val); 
+	result.push_back('l'); 
+	for(int i = 0; i < v.size(); i++) 
+		result.append(this->encode(v[i])); 
+	result.push_back('e'); 	
+
+	return result; 
+}
+
+std::string Parser::encode_dict(std::shared_ptr<Bencode> to_encode) {
+	std::string result; 
+
+	std::map<std::string, std::shared_ptr<Bencode>>> d = 
+		std::get<std::map<std::string, std::shared_ptr<Bencode>>>(to_encode->val); 
+
+	for(auto it = d.begin(); it != d.end(); it++) {
+		result.append(it->first); 
+		result.push_back(':'); 
+		result.append(this->encode(it->second)); 
+	}
+	result->push_back('e'); 
+
+	return result; 
+}
+

@@ -46,6 +46,7 @@ class Parser {
 		void load_file(std::string& path); 
 		std::shared_ptr<Bencode> parse_file(); 
 		void print_file(std::shared_ptr<Bencode> to_print); 
+		std::string encode(std::shared_ptr<Bencode> to_encode); //untested
 
 	private: 
 		std::string file_path; 
@@ -56,6 +57,11 @@ class Parser {
 		std::shared_ptr<Bencode> parse_string(); 
 		std::shared_ptr<Bencode> parse_list(); 
 		std::shared_ptr<Bencode> parse_dict(); 
+
+		std::string encode_int(std::shared_ptr<Bencode> to_encode); 
+		std::string encode_string(std::shared_ptr<Bencode> to_encode); 
+		std::string encode_list(std::shared_ptr<Bencode> to_encode); 
+		std::string encode_dict(std::shared_ptr<Bencode> to_encode); 
 
 		void print_help(std::shared_ptr<Bencode> to_print, int depth); 
 
