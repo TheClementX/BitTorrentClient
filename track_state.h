@@ -1,13 +1,12 @@
 #ifndef TRACK_STATE_H
 #define TRACK_STATE_H
 
+#include <openssl/sha.h>
 #include "b_parser/bencoder.h"
 
 class TState {
 private:
 	Parser p{}; 
-
-	//probably add file manager aswell
 
 	//t_file fields
 	std::string t_file_path; 
@@ -34,6 +33,8 @@ public:
 
 	std::string get_info_hash(); 
 	std::string get_peer_id(); 
+	std::string get_tracker_url(); 
+	void print_t_file(); 
 
 	void set_port(int n); 
 	int get_port(); 

@@ -3,7 +3,14 @@
 
 #include "b_parser/bencoder.h"
 #include <curl/curl.h>
-#include <openssl/sha.h>
+#include "track_state.h"
+#include <cstddef>
+#include <string>
+#include <map>
+#include <vector>
+#include <memory> 
+#include <stdexcept>
+#include <cstdint>
 
 size_t curl_callback(void* contents, size_t size, size_t nmemb, void* out); 
 
@@ -20,7 +27,7 @@ class Tracker {
 private:
 	//parser
 	Parser t_parser{}; 
-	Tstate state; 
+	std::shared_ptr<TState> state; 
 
 	//tracker url fields
 	std::string url; 
@@ -44,10 +51,7 @@ private:
 	void send_get(); 
 
 public: 
-	Tracker(std::string url, 
-			std:shared_ptr<Bencode> t_file, 
-			TState state
-	); 
+	Tracker(std::shared_ptr<TState> state); 
 
 	//assumes not compact response
 	void get_peers(); 

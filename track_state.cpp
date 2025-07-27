@@ -1,4 +1,8 @@
+#include "track_state.h"
+#include <random> 
+
 TState::TState(std::string t_file_path) {
+	std::cout << t_file_path << std::endl; 
 	this->t_file_path = t_file_path; 
 	this->p.load_file(this->t_file_path); 
 	this->t_file = this->p.parse_file(); 
@@ -6,9 +10,12 @@ TState::TState(std::string t_file_path) {
 		std::get<std::map<std::string, std::shared_ptr<Bencode>>>(this->t_file->val); 
 
 	this->tracker_url =	
-		std::get<std::string>(this->t_file_dict["announce"]); 
+		std::get<std::string>(this->t_file_dict["announce"]->val); 
+
+	std::cout << "beginning field inits" << std::endl; 
 	this->make_info_hash(); 
 	this->make_peer_id(); 
+	this->tracker_renew_interval = 0; 
 	this->uploaded = 0; 
 	this->downloaded = 0;
 	this->left = 0; 
@@ -17,9 +24,16 @@ TState::TState(std::string t_file_path) {
 }
 
 void TState::make_info_hash() {
-	std::string info = p->encode(t_file_dict["info"]); 
+	std::cout << this->p.encode(t_file_dict["info"]) << std::endl; 
+	std::string info = this->p.encode(t_file_dict["info"]); 
+	std::cout << info << std::endl; 
 	std::string hash(20, '\0'); 
-	SHA1(info.data(), info.size(), hash.data()); 
+
+	SHA1(reinterpret_cast<const unsigned char*>(info.data()), 
+		info.size(), 
+		reinterpret_cast<unsigned char*>(hash.data())
+	); 
+
 	this->info_hash = hash; 
 }
 
@@ -50,6 +64,14 @@ std::string TState::get_info_hash() {
 
 std::string TState::get_peer_id() {
 	return this->peer_id;
+}
+
+std::string TState::get_tracker_url() {
+	return this->tracker_url;
+}
+
+void TState::print_t_file() {
+	this->p.print_file(this->t_file); 
 }
 
 void TState::set_port(int n) {
@@ -85,12 +107,11 @@ int TState::get_left() {
 }
 
 void TState::set_compact(int n) {
-	if(n != 1 || n != 0)
-		return; 
-	this->compact = n; 
+	if(n == 1 || n == 0)
+		this->compact = n; 
 }
 
-void TState::get_compact() {
+int TState::get_compact() {
 	return this->compact; 
 }
 
@@ -99,5 +120,5 @@ void TState::set_tri(int n) {
 }
 
 int TState::get_tri() {
-	return this->tracker_renew_interval = n; 
+	return this->tracker_renew_interval; 
 }
