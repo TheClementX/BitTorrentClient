@@ -12,6 +12,10 @@ private:
 	std::string t_file_path; 
 	std::shared_ptr<Bencode> t_file; 
 	std::map<std::string, std::shared_ptr<Bencode>> t_file_dict;
+	std::map<std::string, std::shared_ptr<Bencode>> info_dict;
+
+	size_t piece_length; 
+	size_t file_size; 
 
 	//tracker fields
 	std::string tracker_url; 

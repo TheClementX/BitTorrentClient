@@ -11,6 +11,14 @@ TState::TState(std::string t_file_path) {
 
 	this->tracker_url =	
 		std::get<std::string>(this->t_file_dict["announce"]->val); 
+	std::shared_ptr<Bencode> id = this->t_file_dict["info"]; 
+	this->info_dict = 
+		std::get<std::string, std::shared_ptr<Bencode>>(id->val); 
+
+	this->piece_length = 
+		static_cast<size_t>(std::get<int64_t>(this->info_dict["piece length"]->val)); 
+	this->file_size = 
+		static_cast<size_t>(std::get<int64_t>(this->info_dict["length"]->val)); 
 
 	std::cout << "beginning field inits" << std::endl; 
 	this->make_info_hash(); 
@@ -24,9 +32,7 @@ TState::TState(std::string t_file_path) {
 }
 
 void TState::make_info_hash() {
-	std::cout << this->p.encode(t_file_dict["info"]) << std::endl; 
 	std::string info = this->p.encode(t_file_dict["info"]); 
-	std::cout << info << std::endl; 
 	std::string hash(20, '\0'); 
 
 	SHA1(reinterpret_cast<const unsigned char*>(info.data()), 
