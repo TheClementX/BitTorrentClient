@@ -10,16 +10,17 @@ class PieceManager {
 		std::vector<std::shared_ptr<Piece>> pieces; 
 		std::vector<bool> recieved_pieces; 
 
-		int verify_file(std::shared_ptr<Piece>); 
+		int verify_piece(int i); 
+		int verify_file(); 
+		std::vector<uint8_t> merge_piece(std::shared_ptr<Piece> piece); 
 
 	public: 
-		PieceManager(std::shared_ptr<TState>); 
+		PieceManager(std::shared_ptr<TState> state); 
 
-		int verify_piece(std::shared_ptr<Piece>); 
 		void write_file(); 
-		size_t choose_next_piece(); 
+		std::vector<BlockReq> choose_next_blocks(); 
+		int write_block(BlockReq& block, std::vector<uint8_t>& data); 
 		bool check_complete(); 
-
 }; 
 
 #endif 
