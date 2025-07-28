@@ -42,6 +42,18 @@ public:
 	}
 }; 
 
+class BlockInfo {
+public: 
+	size_t p_index; 
+	size_t b_offset; 
+	size_t length; 
+
+	BlockReq(size_t i, size_t o, size_t l) {
+		this->p_index = i; 
+		this->b_offset = o; 
+		this->length = l; 
+	}
+}; 
 
 class Block {
 public: 
