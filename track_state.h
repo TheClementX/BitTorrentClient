@@ -54,7 +54,7 @@ public:
 	size_t get_piece_size();
 	size_t get_num_pieces(); 
 	size_t get_file_size(); 
-	std::string& get_piece_hash(int i); 
+	std::string get_piece_hash(int i); 
 
 	void set_port(int n); 
 	int get_port(); 

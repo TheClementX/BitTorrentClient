@@ -76,11 +76,11 @@ void TState::make_peer_id() {
 
 void TState::extract_piece_hash() {
 	std::string to_extract = this->s_pieces_hash; 
-	this->num_pieces = this->s_pieces_hash.size() / 32;
+	this->num_pieces = this->s_pieces_hash.size() / 20;
 
 	for(int i = 0; i < this->num_pieces; i++) {
-		this->pieces_hashes.push_back(to_extract.substr(0, 32)); 
-		to_extract = to_extract.substr(32, to_extract.size()); 
+		this->pieces_hashes.push_back(to_extract.substr(0, 20)); 
+		to_extract = to_extract.substr(20, to_extract.size()); 
 	}
 }
 
