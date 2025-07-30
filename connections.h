@@ -2,20 +2,27 @@
 #define CONNECTIONS_H
 
 #include "util/parts.h" 
+#include "util/common.h" 
+
+#define MAX_CON 40; 
 
 class ConnectionManager {
 	private:
 		std::vector<std::shared_ptr<Peer>> peers; 
 		std::shared_ptr<TState> state; 
-		int e_poll_fd; 
+		int epoll_fd; 
 		std::vector<bool> ready(200); 
+		std::pair<int, int> serv_socket; 
+		int active_connections; 
 
 		std::map<int, std::shared_ptr<CState>> fd_con; 
 		std::map<std::string, std::shared_ptr<CState>> pid_con; 
 
-		int open_connection(Peer p); 
+		//connection management functions
+		int start_server_sock(); 
+		int open_connection(std::shared_ptr<Peer> p); 
 		int get_ready_peers(); 
-		int recieve_message(); 
+		int recieve_message(std::shared_ptr<Peer> p); 
 			
 		//send protocol message functions
 		int send_keep_alive(int fd); 
@@ -46,8 +53,10 @@ class ConnectionManager {
 
 		int refresh_peers(); 
 		void set_peers(std::vector<std::shared_ptr<Peer>>& peers); 
-		Piece get_piece(size_t offset); 
+		std::shared_ptr<Block> get_block(std::shared_ptr<BlockReq> req); 
 		void handle_peer_cycle(); 
+		
+		void connection_cleanup(); 
 }; 
 
 #endif

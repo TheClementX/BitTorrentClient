@@ -42,7 +42,7 @@ public:
 	}
 }; 
 
-class BlockInfo {
+class BlockReq {
 public: 
 	size_t p_index; 
 	size_t b_offset; 
@@ -65,6 +65,10 @@ public:
 class Piece {
 public:
 	std::vector<std::shared_ptr<Block>> data; 
+	std::vector<bool> have; 
 
-	Piece(int size) {this->data.resize(size);}
+	Piece(int size) {
+		this->data.resize(size);
+		this->have.resize(size); 
+	}
 }; 
