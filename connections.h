@@ -10,10 +10,11 @@ class ConnectionManager {
 	private:
 		std::vector<std::shared_ptr<Peer>> peers; 
 		std::shared_ptr<TState> state; 
-		int epoll_fd; 
-		std::vector<bool> ready(200); 
-		std::pair<int, int> serv_socket; 
-		int active_connections; 
+		int epoll_fd; //only for peer connections
+		struct epoll_event[MAX_CON]; 
+		std::pair<int, int> serv_socket; //poll seperately
+		int active_out_con; 
+		int active_in_con; 
 
 		std::map<int, std::shared_ptr<CState>> fd_con; 
 		std::map<std::string, std::shared_ptr<CState>> pid_con; 
@@ -21,6 +22,10 @@ class ConnectionManager {
 		//connection management functions
 		int start_server_sock(); 
 		int open_connection(std::shared_ptr<Peer> p); 
+		int accept_connection(); 
+		int send_handshake(int fd, std::shared_ptr<Peer> p); 
+		std::shared_ptr<Peer> recv_handshake(int fd); 
+		bool verify_handshake(std::string handshake, std::shared_ptr<Peer> p); 
 		int get_ready_peers(); 
 		int recieve_message(std::shared_ptr<Peer> p); 
 			
