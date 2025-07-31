@@ -2,6 +2,7 @@
 #define PARTS_H
 
 #include <cstdint> 
+#include "util/bitfield.h"
 
 class Peer {
 public:
@@ -26,8 +27,9 @@ public:
 	bool p_interested; 
 
 	int count_down; 
+	bool cancelled; 
 
-	std::vector<bool> peer_pieces; 
+	BitField peer_pieces; 
 	std::shared_ptr<Peer> info; 
 
 	CState(std::shared_ptr<Peer> info, int fd) {
@@ -37,8 +39,24 @@ public:
 		this->p_choked = true; 
 		this->p_interested = false; 
 		this->count_down = 20; 
+		this->cancelled = false; 
 
 		this->info = info;
+	}
+}; 
+
+class CliReq {
+public: 
+	std::shared_ptr<CState> p; 
+	size_t index; 
+	size_t begin; 
+	size_t length; 
+
+	CliReq(std::shared_ptr<CState> p, size_t i, size_t b, size_t l) {
+		this->p = p; 
+		this->index = i; 
+		this->begin = b; 
+		this->length = l;
 	}
 }; 
 
@@ -52,6 +70,19 @@ public:
 		this->p_index = i; 
 		this->b_offset = o; 
 		this->length = l; 
+	}
+}; 
+
+class RecBlock {
+public:
+	size_t index; 
+	size_t begin; 
+	std::vector<uint8_t> data;
+
+	RecBlock(size_t i, size_t b, std::vector<uint8_t> data) {
+		this->index = i; 
+		this->begin = b; 
+		this->data = data; 
 	}
 }; 
 

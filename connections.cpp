@@ -88,6 +88,15 @@ int ConnectionManager::open_connection(std::shared_ptr<Peer> p) {
 	return 0; 
 }
 
+int ConnectionManager::close_connection(std::shared_ptr<CState> p) {
+	epoll_ctl(this->epoll_fd, EPOLL_CTL_DEL, p->fd, NULL); 
+	this->fd_con.erase(p->fd);
+	this->pid_con.erase(p->info->peer_id); 
+	close(p->fd); 
+
+	return 0; 
+}
+
 int ConnectionManager::accept_connection() {
 	if(this->active_in_con >= MAX_CON / 2)
 		return -1; 
@@ -219,8 +228,92 @@ int ConnectionManager::get_ready_peers() {
 
 }
 
-int ConnectionManager::recieve_message(std::shared_ptr<Peer> p) {
+int ConnectionManager::recieve_message(std::shared_ptr<CState> p) {
+	std::string message; 
+	int len, buf_len, tot_len, e; 
+	buf_len = this->state->get_block_size() + 9; 
+	char buf[buf_len]; 
+	std::memset(&buf, 0, sizeof(buf)); 
 
+	e = recv(p->fd, buf, 4, 0); 
+	if(e <= 0 || e != 4)
+		return -1; 
+	message.append(buf, 4); 
+	std::memset(&buf, 0, buf_len); 
+	len += 4; 
+
+	tot_len = static_cast<int>(string_to_bytes(message.substr(0, 4))); 
+	if(tot_len == 0) {
+		this->recv_keep_alive(p); 
+		return 0; 
+	}
+
+	while(len < tot_len) {
+		e = recv(p->fd, buf, buf_len, 0); 
+		if(e <= 0)
+			return -1; 
+		len += e; 
+		message.append(buf, e); 
+	}
+
+	int m_id = static_cast<int>(result[4]); 
+	switch(m_id) {
+		case 0:
+			e = this->recv_choke(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 1:
+			e = this->recv_unchoke(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 2:
+			e = this->recv_interested(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 3:
+			e = this->recv_not_interested(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 4:
+			e = this->recv_have(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 5:
+			e = this->recv_bitfield(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 6:
+			e = this->recv_request(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 7:
+			e = this->recv_piece(message); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 8:
+			e = this->recv_cancel(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		case 9:
+			e = this->recv_port(message, p); 
+			if(e == -1)
+				this->close_connection(p); 
+			break;
+		default:
+			this->close_connection(p); 
+			return -1; 
+			break; 
+	}
+	return 0; 
 }
 	
 //send protocol message functions
@@ -232,6 +325,16 @@ std::string bytes_to_string(uint32_t val) {
 	result.push_back((val >> 8) & 0xff); 
 	result.push_back(val & 0xff); 
 	return result; 
+}
+
+//for conversion of bytes over wire
+uint32_t string_to_bytes(std::string val) {
+	uint32_t result = 0; 
+	result |= static_cast<uint32_t>(val[0]) << 24;
+	result |= static_cast<uint32_t>(val[1]) << 16; 
+	result |= static_cast<uint32_t>(val[2]) << 8; 
+	result |= static_cast<uint32_t>(val[3]); 
+	return result
 }
 
 int ConnectionManager::send_keep_alive(int fd) {
@@ -355,7 +458,7 @@ int ConnectionManager::send_piece(int fd, int ind, int beg, std::vector<uint8_t>
 	return 0; 
 }
 
-int ConnectionManager::send_cancel(int fd, intn ind, int, beg, int len) {
+int ConnectionManager::send_cancel(int fd, int ind, int beg, int len) {
 	int e; 
 	std::string cancel; 
 	int len = 13; 
@@ -371,48 +474,86 @@ int ConnectionManager::send_cancel(int fd, intn ind, int, beg, int len) {
 	return 0; 
 }
 
-//not used
+//no DHT support 
 int ConnectionManager::send_port(int fd) {
 	return 0; 
 }
 
 //recieve protocol message functions
-int ConnectionManager::recv_keep_alive(int fd) {
+int ConnectionManager::recv_keep_alive(std::shared_ptr<CState> p) {
+	if(p->countdown < 20)
+		p->countdown++; 
+	return 0; 
+}
+
+int ConnectionManager::recv_choke(std::shared_ptr<CState> p) {
+	p->i_choked = true; 
+	return 0; 
+}
+
+int ConnectionManager::recv_unchoke(std::shared_ptr<CState> p) {
+	p->i_choked = false; 
+	return 0; 
+}
+
+int ConnectionManager::recv_interested(std::shared_ptr<CState> p) {
+	p->p_interested = true; 
+	return 0; 
+}
+
+int ConnectionManager::recv_not_interested(std::shared_ptr<CState> p) {
+	p->p_interested = false; 
+	return 0; 
 
 }
 
-int ConnectionManager::recv_choke(int fd) {
-
+int ConnectionManager::recv_have(std::string m, std::shared_ptr<CState> p) {
+	int ind = string_to_bytes(m.substr(5)); 
+	p->peer_pieces->set_true(ind); 
+	return 0; 
 }
 
-int ConnectionManager::recv_unchoke(int fd) {
-
+int ConnectionManager::recv_bitfield(std::string m, std::shared_ptr<CState> p) {
+	std::string bits = m.substr(5); 
+	p->peer_pieces = BitField(bits);  
+	return 0; 
 }
 
-int ConnectionManager::recv_interested(int fd) {
+int ConnectionManager::recv_request(std::string m, std::shared_ptr<CState> p) {
+	if(p->p_choked)	
+		return 0; 
+	size_t i = static_cast<size_t>(string_to_bytes(m.substr(5,9)))
+	size_t b = static_cast<size_t>(string_to_bytes(m.substr(9,13)))
+	size_t l = static_cast<size_t>(string_to_bytes(m.substr(13,17)))
+	this->request->push(std::make_shared<CliReq>(p, i, b, l)); 
 
+	return 0; 
 }
 
-int ConnectionManager::recv_not_interested(int fd) {
+int ConnectionManager::recv_piece(std::string m) {
+	int len = static_cast<int>(string_to_bytes(m.substr(0, 4))); 
+	int ind = static_cast<int>(string_to_bytes(m.substr(5, 9))); 
+	int beg = static_cast<int>(string_to_bytes(m.substr(9, 13))); 
+	std::string s_data = m.substr(13); 
+	std::vector<uint8_t> v_data; 
 
+	for(char c : s_data) 
+		v_data.push_back(static_cast<uint8_t>(c)); 
+
+
+	this->recieved.push(std::make_shared<RecBlock>(ind, beg, v_data); 
+	return 0; 
 }
 
-int ConnectionManager::recv_have(int fd) {
-
+int ConnectionManager::recv_cancel(std::string m, std::shared_ptr<CState> p) {
+	p->cancelled = true; 
+	return 0; 
 }
 
-int ConnectionManager::recv_bitfield(int fd) {
-
+//no DHT support
+int ConnectionManager::recv_port(std::string m, std::shared_ptr<CState> p) {
+	return 0; 
 }
-
-int ConnectionManager::recv_request(int fd) {
-
-}
-
-std::vector<unit8_t> ConnectionManager::recv_piece(int fd) {
-
-}
-
 
 //public functions
 int ConnectionManager::refresh_peers() {

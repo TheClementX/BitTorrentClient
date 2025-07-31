@@ -5,7 +5,8 @@
 #include "util/common.h" 
 #include "util/bitfield.h"
 
-#define MAX_CON 40; 
+#define MAX_CON 40;
+#define MAX_MES_LEN 
 
 class ConnectionManager {
 	private:
@@ -18,20 +19,24 @@ class ConnectionManager {
 		int active_out_con; 
 		int active_in_con; 
 
+		std::stack<std::shared_ptr<RecBlock>> recieved; 
+		std::stack<std::shared_ptr<CliReq>> requests; 
 		std::map<int, std::shared_ptr<CState>> fd_con; 
 		std::map<std::string, std::shared_ptr<CState>> pid_con; 
 
 		//connection management functions
 		int start_server_sock(); 
 		int open_connection(std::shared_ptr<Peer> p); 
+		int close_connection(std::shared_ptr<CState> p); 
 		int accept_connection(); 
 		int send_handshake(int fd, std::shared_ptr<Peer> p); 
 		std::shared_ptr<Peer> recv_handshake(int fd); 
 		bool verify_handshake(std::string handshake, std::shared_ptr<Peer> p); 
 		int get_ready_peers(); 
-		int recieve_message(std::shared_ptr<Peer> p); 
+		int recieve_message(std::shared_ptr<CState> p); 
 			
 		std::string bytes_to_string(uint32_t val); 
+		uint32_t string_to_bytes(std::string val); 
 
 		//send protocol message functions
 		int send_keep_alive(int fd); 
@@ -43,17 +48,21 @@ class ConnectionManager {
 		int send_bitfield(int fd); 
 		int send_request(int fd, int ind, int beg, int len); 
 		int send_piece(int fd, int ind, int beg, std::vector<uint8_t> block); 
+		int send_cancel(int fd, int ind, int beg, int len);  
+		int send_port(int fd); 
 
 		//recieve protocol message functions
-		int recv_keep_alive(int fd); 
-		int recv_choke(int fd); 
-		int recv_unchoke(int fd); 
-		int recv_interested(int fd); 
-		int recv_not_interested(int fd); 
-		int recv_have(int fd); 
-		int recv_bitfield(int fd); 
-		int recv_request(int fd); 
-		std::vector<unit8_t> recv_piece(int fd); 
+		int recv_keep_alive(std::shared_ptr<CState> p); 
+		int recv_choke(std::shared_ptr<CState> p); 
+		int recv_unchoke(std::shared_ptr<CState> p); 
+		int recv_interested(std::shared_ptr<CState> p); 
+		int recv_not_interested(std::shared_ptr<CState> p); 
+		int recv_have(std::string m, std::shared_ptr<CState> p); 
+		int recv_bitfield(std::string m, std::shared_ptr<CState> p); 
+		int recv_request(std::string m, std::shared_ptr<CState> p); 
+		int recv_piece(std::string m); 
+		int recv_cancel(std::string m);  
+		int recv_port(std::string m, std::shared_ptr<CState> p); 
 
 	public: 
 		ConnectioManager(std::vector<std::shared_ptr<Peer>>& peers, 
