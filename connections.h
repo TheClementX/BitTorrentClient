@@ -3,6 +3,7 @@
 
 #include "util/parts.h" 
 #include "util/common.h" 
+#include "util/bitfield.h"
 
 #define MAX_CON 40; 
 
@@ -10,6 +11,7 @@ class ConnectionManager {
 	private:
 		std::vector<std::shared_ptr<Peer>> peers; 
 		std::shared_ptr<TState> state; 
+		std::shared_ptr<BitField> field; 
 		int epoll_fd; //only for peer connections
 		struct epoll_event[MAX_CON]; 
 		std::pair<int, int> serv_socket; //poll seperately
@@ -29,6 +31,8 @@ class ConnectionManager {
 		int get_ready_peers(); 
 		int recieve_message(std::shared_ptr<Peer> p); 
 			
+		std::string bytes_to_string(uint32_t val); 
+
 		//send protocol message functions
 		int send_keep_alive(int fd); 
 		int send_choke(int fd); 
@@ -60,6 +64,7 @@ class ConnectionManager {
 		void set_peers(std::vector<std::shared_ptr<Peer>>& peers); 
 		std::shared_ptr<Block> get_block(std::shared_ptr<BlockReq> req); 
 		void handle_peer_cycle(); 
+		void set_bit_field(std::shared_ptr<BitField> field); 
 		
 		void connection_cleanup(); 
 }; 

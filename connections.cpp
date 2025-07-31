@@ -121,6 +121,7 @@ int ConnectionManager::accept_connection() {
 	event.events = EPOLLIN | EPOLLHUP; 
 	epoll_ctl(this->epoll_fd, EPOLL_CTL_ADD, clifd, &event); 
 
+	this->send_bitfield(clifd); 
 	return 0; 
 }
 
@@ -224,10 +225,19 @@ int ConnectionManager::recieve_message(std::shared_ptr<Peer> p) {
 	
 //send protocol message functions
 //0 = success, -1 = failure
+std::string bytes_to_string(uint32_t val) {
+	std::string result; 
+	result.push_back((val >> 24) & 0xff); 
+	result.push_back((val >> 16) & 0xff); 
+	result.push_back((val >> 8) & 0xff); 
+	result.push_back(val & 0xff); 
+	return result; 
+}
+
 int ConnectionManager::send_keep_alive(int fd) {
 	int e; 
 	std::string keep_alive; 
-	keep_alive += static_cast<char>(0); 
+	keep_alive += bytes_to_string(0); 
 
 	e = send(fd, keep_alive.data(), keep_alive.size(), 0); 
 	if(e < 0)
@@ -238,7 +248,7 @@ int ConnectionManager::send_keep_alive(int fd) {
 int ConnectionManager::send_choke(int fd) {
 	int e; 
 	std::string choke; 
-	choke += static_cast<char>(1); 
+	choke += bytes_to_string(1); 
 	choke += static_cast<char>(0); 
 
 	e = send(fd, choke.data(), choke.size(), 0); 
@@ -250,7 +260,7 @@ int ConnectionManager::send_choke(int fd) {
 int ConnectionManager::send_unchoke(int fd) {
 	int e; 
 	std::string unchoke; 
-	unchoke += static_cast<char>(1); 
+	unchoke += bytes_to_string(1); 
 	unchoke += static_cast<char>(1); 
 
 	e = send(fd, unchoke.data(), unchoke.size(), 0); 
@@ -262,7 +272,7 @@ int ConnectionManager::send_unchoke(int fd) {
 int ConnectionManager::send_interested(int fd) {
 	int e; 
 	std::string interested;
-	interested += static_cast<char>(1); 
+	interested += bytes_to_string(1); 
 	interested += static_cast<char>(2); 
 	
 	e = send(fd, interested.data(), interested.size(), 0); 
@@ -274,7 +284,7 @@ int ConnectionManager::send_interested(int fd) {
 int ConnectionManager::send_not_interested(int fd) {
 	int e; 
 	std::string not_interested; 
-	not_interested += static_cast<char>(1); 
+	not_interested += bytes_to_string(1); 
 	not_interested += static_cast<char>(3); 
 
 	e = send(fd, not_interested.data(), not_interested.size(), 0); 
@@ -283,50 +293,146 @@ int ConnectionManager::send_not_interested(int fd) {
 	return 0; 
 }
 
-int ConnectionManager::send_have(int fd) {
+int ConnectionManager::send_have(int fd, int i) {
+	int e; 
+	std::string have; 
+	have += bytes_to_string(5); 
+	have += static_cast<char>(4); 
+	have += bytes_to_string(i); 
 
+	e = send(fd, have.data(), have.size(), 0); 
 	if(e < 0)
 		return -1; 
 	return 0; 
 }
 
 int ConnectionManager::send_bitfield(int fd) {
+	std::string bitfield; 
+	std::vector<uint8_t> bits = this->field->get_bits(); 
+	uint_32 len = 1 + bits.size(); 
+	bitfield += bytes_to_string(len); 
+	bitfield += static_cast<char>(5); 
 
+	for(int i = 0; i < bits.size(); i++) 
+		bitfield += static_cast<char>(bits[i]); 
+
+	e = send(fd, bitfield.data(), bitfield.size(), 0); 
 	if(e < 0)
 		return -1; 
 	return 0; 
 }
 
 int ConnectionManager::send_request(int fd, int ind, int beg, int len) {
+	std::string request; 
+	uint32_t len = 13; 
+	request += bytes_to_string(len); 
+	request += static_cast<char>(6); 
+	request += bytes_to_string(reinterpret_cast<uint_32>(ind)); 
+	request += bytes_to_string(reinterpret_cast<uint_32>(beg)); 
+	request += bytes_to_string(reinterpret_cast<uint_32>(len)); 
 
+	e = send(fd, request.data(), request.size(), 0); 
 	if(e < 0)
 		return -1; 
 	return 0; 
 }
 
 int ConnectionManager::send_piece(int fd, int ind, int beg, std::vector<uint8_t> block) {
+	int e;
+	std::string piece; 
+	int len = 9 + block.size(); 
+	piece += bytes_to_string(len); 
+	piece += static_cast<char>(7); 
+	piece += bytes_to_string(reinterpret_cast<uint_32>(ind)); 
+	piece += bytes_to_string(reinterpret_cast<uint_32>(beg)); 
+	
+	for(int i = 0; i < block.size(); i++) 
+		piece += static_cast<char>(block[i]); 
 
+	e = send(fd, piece.data(), piece.size(), 0); 
 	if(e < 0)
 		return -1; 
 	return 0; 
 }
 
+int ConnectionManager::send_cancel(int fd, intn ind, int, beg, int len) {
+	int e; 
+	std::string cancel; 
+	int len = 13; 
+	cancel += bytes_to_string(13); 
+	cancel += static_cast<char>(8); 
+	cancel += bytes_to_string(reinterpret_cast<uint_32>(ind)); 
+	cancel += bytes_to_string(reinterpret_cast<uint_32>(beg)); 
+	cancel += bytes_to_string(reinterpret_cast<uint_32>(len)); 
+	
+	e = send(fd, cancel.data(), cancel.size(), 0); 
+	if(e < 0)
+		return -1; 
+	return 0; 
+}
+
+//not used
+int ConnectionManager::send_port(int fd) {
+	return 0; 
+}
 
 //recieve protocol message functions
-int ConnectionManager::recv_keep_alive(int fd); 
-int ConnectionManager::recv_choke(int fd); 
-int ConnectionManager::recv_unchoke(int fd); 
-int ConnectionManager::recv_interested(int fd); 
-int ConnectionManager::recv_not_interested(int fd); 
-int ConnectionManager::recv_have(int fd); 
-int ConnectionManager::recv_bitfield(int fd); 
-int ConnectionManager::recv_request(int fd); 
-std::vector<unit8_t> ConnectionManager::recv_piece(int fd); 
+int ConnectionManager::recv_keep_alive(int fd) {
+
+}
+
+int ConnectionManager::recv_choke(int fd) {
+
+}
+
+int ConnectionManager::recv_unchoke(int fd) {
+
+}
+
+int ConnectionManager::recv_interested(int fd) {
+
+}
+
+int ConnectionManager::recv_not_interested(int fd) {
+
+}
+
+int ConnectionManager::recv_have(int fd) {
+
+}
+
+int ConnectionManager::recv_bitfield(int fd) {
+
+}
+
+int ConnectionManager::recv_request(int fd) {
+
+}
+
+std::vector<unit8_t> ConnectionManager::recv_piece(int fd) {
+
+}
+
 
 //public functions
-int ConnectionManager::refresh_peers(); 
-void ConnectionManager::set_peers(std::vector<std::shared_ptr<Peer>>& peers); 
-std::shared_ptr<Block> ConnectionManager::get_block(std::shared_ptr<BlockReq> req); 
-void ConnectionManager::handle_peer_cycle(); 
+int ConnectionManager::refresh_peers() {
 
-void ConnectionManager::connection_cleanup(); 
+}
+
+void ConnectionManager::set_peers(std::vector<std::shared_ptr<Peer>>& peers) {
+
+}
+
+std::shared_ptr<Block> ConnectionManager::get_block(std::shared_ptr<BlockReq> req) {
+
+}
+
+void ConnectionManager::handle_peer_cycle() {
+
+}
+
+
+void ConnectionManager::connection_cleanup() {
+
+}
+

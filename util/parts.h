@@ -72,3 +72,5 @@ public:
 		this->have.resize(size); 
 	}
 }; 
+
+#endif; 
