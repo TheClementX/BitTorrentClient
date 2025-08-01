@@ -7,8 +7,8 @@
 class PieceManager {
 	private:
 		std::shared_ptr<TState> state; 
-		std::vector<std::shared_ptr<Piece>> pieces; 
-		std::vector<bool> recieved_pieces; 
+		std::shared_ptr<std::vector<std::shared_ptr<Piece>>> pieces; 
+		std::shared_ptr<BitField> recieved_pieces; 
 		int cur_piece; 
 		bool complete; 
 
@@ -22,7 +22,8 @@ class PieceManager {
 
 		void write_file(); 
 		std::vector<std::shared_ptr<BlockReq>> choose_next_blocks(); 
-		void write_block(std::shared_ptr<BlockReq> block, std::vector<uint8_t>& data); 
+		void write_block(std::shared_ptr<RecBlock> block); 
+		std::shared_ptr<std::vector<std::shared)ptr<Piece>>> get_file_bits(); 
 		bool check_complete(); 
 }; 
 

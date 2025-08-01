@@ -7,11 +7,6 @@ size_t curl_callback(void* contents, size_t size, size_t nmemb, void* out) {
 	return size*nmemb; 
 }
 
-Peer::Peer(std::string pd, std::string ip, int port) {
-	this->peer_id = pd; 
-	this->ip = ip; 
-	this->port = port; 
-}
 
 
 void Tracker::parse_url(std::string to_parse) {
@@ -101,7 +96,7 @@ Tracker::Tracker(std::shared_ptr<TState> state) {
 	this->parse_url(this->url); 
 }
 
-void Tracker::get_peers() {
+std::vector<std::shared_ptr<Peer>> Tracker::get_peers() {
 	this->send_get(); 
 	this->parse_response(); 
 
@@ -123,5 +118,6 @@ void Tracker::get_peers() {
 		std::shared_ptr<Peer> to_push = std::make_shared<Peer>(peer_id, ip, port); 
 		this->peers.push_back(to_push); 
 	}
+	return this->peers; 
 }
 

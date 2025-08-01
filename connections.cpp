@@ -41,6 +41,7 @@ std::pair<int, int> ConnectionManager::start_server_sock() {
 	listen(servfd, 300); 
 		
 	result->first = servfd; result->second = ntohs(saddr.sin_port); 
+	this->sate->set_port(result->second); 
 	return result; 
 }
 
@@ -602,7 +603,8 @@ void ConnectionManager::set_peers(std::vector<std::shared_ptr<Peer>>& peers) {
 }
 
 void ConnectionManager::push_block_req(std::shared_ptr<BlockReq> req) {
-	this->my_requests.push_back(req); 
+	if(this->my_requests.size() < 3)
+		this->my_requests.push_back(req); 
 }
 
 //does not handle time out for sockets

@@ -14,7 +14,7 @@ public:
 	BitField(int size); 
 	BitField(std::string field); 
 
-	void get_value(int i); 
+	bool get_value(int i); 
 	void set_true(int i); 
 	void set_false(int i); 
 	void toggle(int i); 

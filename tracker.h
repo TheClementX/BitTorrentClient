@@ -11,17 +11,10 @@
 #include <memory> 
 #include <stdexcept>
 #include <cstdint>
+#include <util/parts.h>
 
 size_t curl_callback(void* contents, size_t size, size_t nmemb, void* out); 
 
-class Peer {
-public:
-	std::string peer_id; 
-	std::string ip; 
-	int port; 
-
-	Peer(std::string pd, std::string ip, int port); 
-}; 
 
 class Tracker {
 private:
@@ -54,7 +47,7 @@ public:
 	Tracker(std::shared_ptr<TState> state); 
 
 	//assumes not compact response
-	void get_peers(); 
+	std::vector<std::shared_ptr<Peer>> get_peers(); 
 }; 
 
 #endif

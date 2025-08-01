@@ -2,8 +2,9 @@
 
 PieceManager::PieceManager(std::shared_ptr<TState> state) {
 	this->state = state; 
-	this->pieces.resize(state.get_num_pieces()); 
-	this->recieved_pieces = std::vector<bool>(false, this->pieces.size()); 
+	this->pieces = std::make_shared<std::vector<std::shared)ptr<Piece>>>(); 
+	this->pieces->resize(state.get_num_pieces()); 
+	this->recieved_pieces = std::make_shared<BitField>(this->state->get_num_pieces()); 
 	this->cur_piece = 0;  
 	this->complete = false; 
 }
@@ -30,7 +31,7 @@ bool PieceManager::verify_piece(int i) {
 	); 
 	}
 	if(true_hash == trial_hash) 
-		this->recieved_pieces[i] = true; 
+		this->recieved_pieces->set_true(i); 
 		return true; 
 	else {
 		this->pieces[i].clear(); 
@@ -126,7 +127,7 @@ std::vector<std::shared_ptr<BlockReq>> PieceManager::choose_next_blocks() {
 		int nb = p->data.size(); 
 		for(int i = 0; i < nb; i++) {
 			if(count >= 3) break; 
-			if(!p->have[i]) {
+			if(!p->get_val(i)) {
 				result.push_back(
 					std::make_shared<BlockReq>(this->cur_piece, i, this->state->get_block_size()
 				); 
@@ -153,9 +154,9 @@ std::vector<std::shared_ptr<BlockReq>> PieceManager::choose_next_blocks() {
 	}
 }
 
-void PieceManager::write_block(std::shared_ptr<BlockReq> block, std::vector<uint8_t>& data) {
-	std::shared_ptr<Piece> p = this->pieces[block->p_index]; 
-	std::shared_ptr<Block> b = p->data[block->b_offset]; 
+void PieceManager::write_block(std::shared_ptr<RecBlock> block) {
+	std::shared_ptr<Piece> p = this->pieces[block->index]; 
+	std::shared_ptr<Block> b = p->data[block->begin]; 
 	b->data = data; 
 	p->have[block->b_offset] = true; 
 }
@@ -171,5 +172,9 @@ bool PieceManager::check_complete() {
 		this->complete = true; 
 	}
 	return true; 
+}
+
+std::shared_ptr<std::vector<std::shared)ptr<Piece>>> PieceManager::get_file_bits() {
+	return this->pieces; 
 }
 
