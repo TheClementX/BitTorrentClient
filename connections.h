@@ -4,6 +4,8 @@
 #include "util/parts.h" 
 #include "util/common.h" 
 #include "util/bitfield.h"
+#include <random>
+#include <cstdint>
 
 #define MAX_CON 40;
 #define MAX_MES_LEN 
@@ -13,14 +15,16 @@ class ConnectionManager {
 		std::vector<std::shared_ptr<Peer>> peers; 
 		std::shared_ptr<TState> state; 
 		std::shared_ptr<BitField> field; 
+		std::shared_ptr<std::vector<std::shared_ptr<Piece>>> file_bits
 		int epoll_fd; //only for peer connections
-		struct epoll_event[MAX_CON]; 
+		struct epoll_ready[MAX_CON]; 
 		std::pair<int, int> serv_socket; //poll seperately
 		int active_out_con; 
 		int active_in_con; 
 
 		std::stack<std::shared_ptr<RecBlock>> recieved; 
-		std::stack<std::shared_ptr<CliReq>> requests; 
+		std::stack<std::shared_ptr<CliReq>> cli_requests; 
+		std::vector<std::shared_ptr<BlockReq>> my_requsts; 
 		std::map<int, std::shared_ptr<CState>> fd_con; 
 		std::map<std::string, std::shared_ptr<CState>> pid_con; 
 
@@ -64,16 +68,21 @@ class ConnectionManager {
 		int recv_cancel(std::string m);  
 		int recv_port(std::string m, std::shared_ptr<CState> p); 
 
+		std::vector<uint8_t> join_piece(std::shared_ptr<Piece> p); 
+		std::vector<uint8_t> get_send_data(int i, int b, int l); 
+
 	public: 
 		ConnectioManager(std::vector<std::shared_ptr<Peer>>& peers, 
 						 std::shared_ptr<TState> state
 		); 
 
-		int refresh_peers(); 
+		void refresh_peers(); 
 		void set_peers(std::vector<std::shared_ptr<Peer>>& peers); 
-		std::shared_ptr<Block> get_block(std::shared_ptr<BlockReq> req); 
+		void push_block_req(std::shared_ptr<BlockReq> req); 
 		void handle_peer_cycle(); 
 		void set_bit_field(std::shared_ptr<BitField> field); 
+		void set_file_bits(std::shared_ptr<std::vector<std::shared_ptr<Piece>>> file); 
+		std::stack<std::shared_ptr<RecBlock>> get_recieved_blocks(); 
 		
 		void connection_cleanup(); 
 }; 

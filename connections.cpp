@@ -24,7 +24,7 @@ std::pair<int, int> ConnectionManager::start_server_sock() {
 	saddr.sin_family = AF_INET; 
 
 	servfd = socket(AF_INET, SOCK_STREAM, 0); 
-	if(servfd < 0)
+	if(servfd <0)
 		throw std::runtime_error("servfd client socket call failed"); 
 
 	e = bind(servfd, (struct sockaddr*) &saddr, slen); 
@@ -225,7 +225,10 @@ bool ConnectionManager::verify_handshake(std::string handshake, std::shared_ptr<
 }
 
 int ConnectionManager::get_ready_peers() {
-
+	int e = epoll_wait(this->epoll_fd, this->epoll_ready, MAX_CON, 1000); 
+	if(e < 0)
+		return -1; 
+	return e; 
 }
 
 int ConnectionManager::recieve_message(std::shared_ptr<CState> p) {
@@ -441,6 +444,13 @@ int ConnectionManager::send_request(int fd, int ind, int beg, int len) {
 }
 
 int ConnectionManager::send_piece(int fd, int ind, int beg, std::vector<uint8_t> block) {
+	if(this->fd_con[fd]->cancelled) {
+		this->fd_con[fd]->cancelled = false; 
+		return 0; 
+	}
+	if(!this->field->get_value())
+		return 0; 
+
 	int e;
 	std::string piece; 
 	int len = 9 + block.size(); 
@@ -555,25 +565,120 @@ int ConnectionManager::recv_port(std::string m, std::shared_ptr<CState> p) {
 	return 0; 
 }
 
-//public functions
-int ConnectionManager::refresh_peers() {
+std::vector<uint8_t> ConnectionManager::join_piece(std::shared_ptr<Piece> p) {
+	std::vector<uint8_t> result; 
+	for(auto& block : p->data) {
+		for(auto byte : block->data) {
+			result->push_back(byte); 
+		}
+	}
+	retun result; 
+}
 
+std::vector<uint8_t> ConnectionManager::get_send_data(int i, int b, int l) {
+	std::shared_ptr<Piece> c_piece = this->file_bits[i]; 	
+	std::vector<uint8_t> joined = this->join_piece(c_piece); 
+	std::vector<uint8_t> result(joined.begin() + b, joined.begin + b + l); 
+	return result; 
+}
+
+//public functions
+void ConnectionManager::refresh_peers() {
+	if(this->active_out_con < MAX_LEN / 20) {
+		int len = this->peers.len(); 
+		std::random_device rd(); 
+		std::mt19937 gen(rd()); 
+		std::uniform_int_distribution<> dist(0, len-1); 
+		while(this->active_out_con < MAX_LEN / 20) {
+			int i = dist(gen); 
+			if(!pid_con.contains(this->peers[i]->peer_id))
+				this->open_connection(this->peers[i]); 
+		}
+	}
 }
 
 void ConnectionManager::set_peers(std::vector<std::shared_ptr<Peer>>& peers) {
-
+	this->peers = peers;
 }
 
-std::shared_ptr<Block> ConnectionManager::get_block(std::shared_ptr<BlockReq> req) {
-
+void ConnectionManager::push_block_req(std::shared_ptr<BlockReq> req) {
+	this->my_requests.push_back(req); 
 }
 
+//does not handle time out for sockets
 void ConnectionManager::handle_peer_cycle() {
+	//get_ready_peers()
+	int ready = this->get_ready_peers(); 
+	if(ready == -1)
+		throw std::runtime_error("epoll call failed in get_ready_peers()"); 
+	
+	//recieve messages
+	std::vector<std::thread> thread_man; 
+	for(int i = 0; i < ready; i++) {
+		if(this->ready[i].events & EPOLLHUP)
+			this->close_connection(this->fd_con[this->ready[i].data.fd]; 
+		else if(this->ready[i].events & EPOLLIN); 
+		thread_man.push_back(std::thread(this->recieve_message, this->fd_con[this->ready[i].data.fd])
+	}
+	for(auto& t : thread_man)
+		t.join()
+	thread_man.clear(); //race conditions? 	
+	
+	//process outgoing piece requests
+	while(this->cli_requests.size() != 0) {
+		std::shared_ptr<CliReq> cur_req = this->cli_requests.pop(); 
+		std::vector<uint8_t> data = this->get_send_data(cur_req->index, cur_req->begin, cur_req->length); 
+		thread_man.push_back(
+			std::thread(this->send_piece, cur_req->p->fd, cur_req->index, cur_req->begin, data)
+		); 
+	}
+	for(auto& t : thread_man)
+		t.join()
+	thread_man.clear(); //race conditions? 	
+	
+	//iterate through peers
+	//choke/unchoke interested/not_interested
+	//request
+	std::random_device rd(); 
+	std::mt19937 gen(rd()); 
+	std::uniform_int_distribution<> dist(0, this->my_requests.size()-1); 
+	for(auto& p : this->fd_con) {
+		std::shared_ptr<CState> s = p->second; 
+		if(s->i_choked) {
+			s->i_interested = true; 
+			thread_man.push_back(std::thread(this->send_interested, s->fd)); 
+		} else if(s->i_interested && !s->i_choked) {
+			int i = dist(gen); 
+			thread_man.push_back(
+					std::thread(this->send_request, 
+						this->my_requests[i]->p_index, 
+						this->my_requests[i]->p_offset, 
+						this->my_requests[i]->lenght
+					)
+			); 
+		}
+	}
 
+	for(auto& t : thread_man)
+		t.join()
+	thread_man.clear(); //race conditions? 	
 }
 
+void ConnectionManager::set_bit_field(std::shared_ptr<BitField> field) {
+	this->field = field; 
+}
+
+void ConnectionManager::set_file_bits(std::shared_ptr<std::vector<std::shared_ptr<Piece>>> file) {
+	this->file_bits = file; 
+}
+
+std::stack<std::shared_ptr<RecBlock>> ConnectionManager::get_recieved_blocks() {
+	return this->recieved; 
+}
 
 void ConnectionManager::connection_cleanup() {
-
+	for(auto& p : this->con_fd)
+		close(p->second->fd); 
+	close(this->epoll_fd); 
 }
 
